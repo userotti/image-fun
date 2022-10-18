@@ -1,4 +1,5 @@
 import * as React from 'react';
+import './App.css'
 import { useState, useMemo, useEffect } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import IconButton from '@mui/material/IconButton';
@@ -7,24 +8,18 @@ import InputLabel from '@mui/material/InputLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import FormControl from '@mui/material/FormControl';
 import SearchIcon from '@mui/icons-material/Search';
-
+import Skeleton from '@mui/material/Skeleton';
+import Stack from '@mui/material/Stack';
 import Card from '@mui/material/Card';
-import CardMedia from '@mui/material/CardMedia';
-import CardContent from '@mui/material/CardContent';
-
+import Masonry from '@mui/lab/Masonry';
 import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
-import ImageListItem from '@mui/material/ImageListItem'
-import { Pagination, ImageListItemBar, Avatar } from '@mui/material';
-
+import { Pagination, Avatar} from '@mui/material';
 import {ThemeProvider, createTheme} from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
-import '@fontsource/roboto/500.css';
-import '@fontsource/roboto/700.css';
-
-
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 const THEME = createTheme({
   typography: {
@@ -40,8 +35,8 @@ export default function App() {
 
 
   const [pageSize, ] = useState(12)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [searchText, setSearchText] = useState('')
+  const [searchTerm, setSearchTerm] = useState('flowers')
+  const [searchText, setSearchText] = useState('flowers')
   const [results, setResults] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
   const [loadingImages, setLoadingImages] = useState(false)
@@ -55,7 +50,6 @@ export default function App() {
       setLoadingImages(true)
       fetch(URL).then((response)=>{
         response.json().then((body)=>{
-          console.log("body: ", body)
           setResults({
             ...results,
             [searchTerm]: {
@@ -67,33 +61,44 @@ export default function App() {
         }).catch((e)=>{
           console.log("Something went wrong: ", e.message)
         }).finally(()=>{
-          setLoadingImages(false)
+          //showing the loading skeletons
+          setTimeout(()=>{
+            setLoadingImages(false)
+          }, 500)
         })
       })
     }
   }, [searchTerm, currentPage])
 
-  const displayResults = useMemo(()=>{
-    return results && results[searchText] && results[searchText][currentPage] ? results[searchText][currentPage] : null
-  }, [results]);
+  const {
+    currentPageResults,
+    searchTermResults
+  } = useMemo(()=>{
+    return {
+      currentPageResults: results && results[searchTerm] && results[searchTerm][currentPage] ? results[searchTerm][currentPage] : null,
+      searchTermResults: results && results[searchTerm] ? results[searchTerm] : null,
+    }
+  }, [results, currentPage, searchTerm]);
+
+  const smallScreen = useMediaQuery('(max-width:800px)');
+  const tinyScreen = useMediaQuery('(max-width:500px)');
   
   return (
     <ThemeProvider theme={THEME}>
       <React.Fragment>
         <CssBaseline />
+
+        {/*Small from at the top of the screen*/} 
         <Container maxWidth="lg" sx={{
             p: 2,
+            backgroundColor: '#f4f4f4'
           }}>
           <form 
             onSubmit={(event)=>{
               event.preventDefault();
               setSearchTerm(searchText);
             }}
-            style={{  
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center'}}
+            className='formContainer'
           >
             <FormControl size={'small'} sx={{ m: 1, width: '25ch', backgroundColor: '#fafafa', }} variant="outlined">
               <InputLabel htmlFor="outlined-adornment-search">Search for images...</InputLabel>
@@ -120,6 +125,8 @@ export default function App() {
           </form>
           
         </Container>
+
+        {/*Results feedback and pagnigation container*/}  
         <Container maxWidth="lg" sx={{ 
             p: 2,
             display: 'flex',
@@ -127,31 +134,54 @@ export default function App() {
             alignItems: 'center',
             justifyContent: 'space-between',
             height: '50px',
+            backgroundColor: '#f4f4f4'
         }}>
-          { results[searchTerm] ? 
+          { (searchTermResults && currentPageResults)  ? 
             <Typography variant="subtitle1" gutterBottom>
-              {`Showing ${results[searchTerm][currentPage].length} of ${results[searchTerm].totalHits} results for "${searchTerm}"`} 
+              {`Showing ${currentPageResults.length} of ${searchTermResults.totalHits} results for "${searchTerm}"`} 
             </Typography>  : <div/>}
-          <Pagination/>  
+            
+            {currentPageResults && <Pagination count={searchTermResults.totalHits} page={currentPage} onChange={(e, page)=>{
+              setCurrentPage(page)
+            }}/>}
         </Container>    
-        
-        <Container maxWidth="lg" sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            { 
-              displayResults ? displayResults.map((hit)=>{
-                return <Card key={hit.id}>
-                  <CardMedia
-                    component="img"
-                    height="194"
-                    image={hit.imageURL}
-                  />
-                </Card>
-              }) : null
-            }  
+
+        {/*Image Card container*/}    
+        <Container maxWidth="lg" sx={{ 
+            p: 2,
+            backgroundColor: '#f4f4f4',
+            overflow: 'hidden'
+        }}>
+            <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}>
+              { 
+                loadingImages ? [1,2,3,4,5,6,7,8,9].map((item)=>{
+                  return <Stack spacing={1} key={item}>
+                    <Skeleton variant="rectangular" sx={{height: `${(Math.random()*200)+100}px`, borderRadius: '16px'}} />
+                    <Stack>
+                      <Skeleton variant="text" sx={{ fontSize: '16px' }} />
+                      <Skeleton variant="text" sx={{ fontSize: '12px' }} />
+                    </Stack>
+                </Stack>
+                }) : currentPageResults ? currentPageResults.map((hit)=>{
+                  return <Card key={hit.id}>
+                      <img src={hit.webformatURL} className='cardImage' alt={hit.id}/>
+                      <div className='cardBody'>
+                        <div>
+                          <Typography variant="subtitle1" gutterBottom>
+                            {`By ${hit.user}`}
+                          </Typography>
+                          <Typography variant="caption" gutterBottom>
+                            {hit.tags}
+                          </Typography>
+                        </div>
+                        <Avatar src={hit.userImageURL}/>
+                      </div>
+                      
+                  </Card>
+                }) : null
+              }  
+            </Masonry>
+            
         </Container>
       </React.Fragment>  
     </ThemeProvider>

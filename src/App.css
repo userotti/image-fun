@@ -36,3 +36,25 @@
     transform: rotate(360deg);
   }
 }
+
+
+.formContainer {  
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardBody {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 16px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardImage {
+  width: 100%
+}
