@@ -58,3 +58,8 @@
 .cardImage {
   width: 100%
 }
+
+.emptyResults {
+  width: 100%;
+  text-align: center
+}

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import './App.css'
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import IconButton from '@mui/material/IconButton';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -31,8 +31,55 @@ const THEME = createTheme({
   }
 });
 
-export default function App() {
+//Component to render the loading state
+const LoadingState = ()=>{
 
+  const smallScreen = useMediaQuery('(max-width:800px)');
+  const tinyScreen = useMediaQuery('(max-width:500px)');
+
+  return <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}> 
+    {[1,2,3,4,5,6,7,8,9].map((item)=>{
+      return <Stack spacing={1} key={item}>
+        <Skeleton variant="rectangular" sx={{height: `${(Math.random()*200)+100}px`, borderRadius: '16px'}} />
+        <Stack>
+          <Skeleton variant="text" sx={{ fontSize: '16px' }} />
+          <Skeleton variant="text" sx={{ fontSize: '12px' }} />
+        </Stack>
+    </Stack>
+    })}
+   </Masonry>
+}
+
+//Component to render the images
+const ImageList = ({hits}) => {
+
+  //Lets fetch the preview if the image is very large
+  const [largeImageSize, ] = useState(1000000)
+  const smallScreen = useMediaQuery('(max-width:800px)');
+  const tinyScreen = useMediaQuery('(max-width:500px)');
+
+  return <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}> 
+    { hits.map((hit)=>{
+        return <Card key={hit.id}>
+          <img src={hit.imageWidth * hit.imageHeight > largeImageSize ? hit.previewURL : hit.webformatURL } className='cardImage' alt={hit.id}/>
+          <div className='cardBody'>
+            <div>
+              <Typography variant="subtitle1" gutterBottom>
+                {`By ${hit.user}`}
+              </Typography>
+              <Typography variant="caption" gutterBottom>
+                {hit.tags}
+              </Typography>
+            </div>
+            <Avatar src={hit.userImageURL}/>
+          </div>
+        </Card>
+      })
+    } 
+  </Masonry>
+}
+
+export default function App() {
 
   const [pageSize, ] = useState(12)
   const [searchTerm, setSearchTerm] = useState('flowers')
@@ -41,35 +88,39 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [loadingImages, setLoadingImages] = useState(false)
 
-  useEffect(()=>{
+  //The main call back for fetching new images
+  const fetchResults = useCallback((searchTerm, currentPage, pageSize)=>{
 
     let API_KEY = '30547207-fa77989eab6e92806d2cdcb24';
     let URL = `https://pixabay.com/api/?key=${API_KEY}&q=${encodeURIComponent(searchTerm)}&page=${currentPage}&per_page=${pageSize}`;
     
-    if (!loadingImages) {
-      setLoadingImages(true)
-      fetch(URL).then((response)=>{
-        response.json().then((body)=>{
-          setResults({
-            ...results,
-            [searchTerm]: {
-              ...results[searchTerm],
-              [currentPage]: body.hits,
-              totalHits: body.totalHits
-            }
-          })
-        }).catch((e)=>{
-          console.log("Something went wrong: ", e.message)
-        }).finally(()=>{
-          //showing the loading skeletons
-          setTimeout(()=>{
-            setLoadingImages(false)
-          }, 500)
+    setCurrentPage(currentPage)
+    setSearchTerm(searchTerm)
+    setLoadingImages(true)
+    
+    fetch(URL).then((response)=>{
+      response.json().then((body)=>{
+        setResults({
+          ...results,
+          [searchTerm]: {
+            ...results[searchTerm],
+            [currentPage]: body.hits,
+            totalHits: body.totalHits
+          }
         })
+      }).catch((e)=>{
+        console.log("Something went wrong: ", e.message)
+      }).finally(()=>{
+        //Show the loading state
+        setTimeout(()=>{
+          setLoadingImages(false)
+        }, 1000)
       })
-    }
-  }, [searchTerm, currentPage])
+    })
 
+  }, [results])
+
+  //Useful values needed during rendering that could be undefined
   const {
     currentPageResults,
     searchTermResults
@@ -80,9 +131,6 @@ export default function App() {
     }
   }, [results, currentPage, searchTerm]);
 
-  const smallScreen = useMediaQuery('(max-width:800px)');
-  const tinyScreen = useMediaQuery('(max-width:500px)');
-  
   return (
     <ThemeProvider theme={THEME}>
       <React.Fragment>
@@ -96,7 +144,7 @@ export default function App() {
           <form 
             onSubmit={(event)=>{
               event.preventDefault();
-              setSearchTerm(searchText);
+              fetchResults(searchText, 1, pageSize)
             }}
             className='formContainer'
           >
@@ -123,7 +171,6 @@ export default function App() {
             </FormControl>
             <Button type="submit" variant="contained" size="medium">Go</Button>
           </form>
-          
         </Container>
 
         {/*Results feedback and pagnigation container*/}  
@@ -141,8 +188,8 @@ export default function App() {
               {`Showing ${currentPageResults.length} of ${searchTermResults.totalHits} results for "${searchTerm}"`} 
             </Typography>  : <div/>}
             
-            {currentPageResults && <Pagination count={searchTermResults.totalHits} page={currentPage} onChange={(e, page)=>{
-              setCurrentPage(page)
+            {searchTermResults && <Pagination count={searchTermResults.totalHits} page={currentPage} onChange={(e, page)=>{
+              fetchResults(searchTerm, page, pageSize)
             }}/>}
         </Container>    
 
@@ -152,36 +199,12 @@ export default function App() {
             backgroundColor: '#f4f4f4',
             overflow: 'hidden'
         }}>
-            <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}>
-              { 
-                loadingImages ? [1,2,3,4,5,6,7,8,9].map((item)=>{
-                  return <Stack spacing={1} key={item}>
-                    <Skeleton variant="rectangular" sx={{height: `${(Math.random()*200)+100}px`, borderRadius: '16px'}} />
-                    <Stack>
-                      <Skeleton variant="text" sx={{ fontSize: '16px' }} />
-                      <Skeleton variant="text" sx={{ fontSize: '12px' }} />
-                    </Stack>
-                </Stack>
-                }) : currentPageResults ? currentPageResults.map((hit)=>{
-                  return <Card key={hit.id}>
-                      <img src={hit.webformatURL} className='cardImage' alt={hit.id}/>
-                      <div className='cardBody'>
-                        <div>
-                          <Typography variant="subtitle1" gutterBottom>
-                            {`By ${hit.user}`}
-                          </Typography>
-                          <Typography variant="caption" gutterBottom>
-                            {hit.tags}
-                          </Typography>
-                        </div>
-                        <Avatar src={hit.userImageURL}/>
-                      </div>
-                      
-                  </Card>
-                }) : null
-              }  
-            </Masonry>
-            
+            { loadingImages ? <LoadingState/> : Boolean(currentPageResults) ? <ImageList hits={currentPageResults}/> : <div className='emptyResults'>
+                <Typography variant="h4" gutterBottom>
+                  Search for the images in the Pixabay database!
+                </Typography>
+              </div>
+            }
         </Container>
       </React.Fragment>  
     </ThemeProvider>
