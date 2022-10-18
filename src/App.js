@@ -1,6 +1,6 @@
 import * as React from 'react';
 import './App.css'
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import IconButton from '@mui/material/IconButton';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -20,6 +20,8 @@ import Typography from '@mui/material/Typography';
 import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import useImageLoaded from './hooks/ImageLoaded';
+import CircularProgress from '@mui/material/CircularProgress';
 
 const THEME = createTheme({
   typography: {
@@ -31,49 +33,57 @@ const THEME = createTheme({
   }
 });
 
-//Component to render the loading state
-const LoadingState = ()=>{
+//Single card elemnt
+const ImageCard = ({hit}) => {
+  const [ref, loaded, onLoad] = useImageLoaded()
+  const skeletonWrapperRef = useRef()
 
-  const smallScreen = useMediaQuery('(max-width:800px)');
-  const tinyScreen = useMediaQuery('(max-width:500px)');
-
-  return <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}> 
-    {[1,2,3,4,5,6,7,8,9].map((item)=>{
-      return <Stack spacing={1} key={item}>
-        <Skeleton variant="rectangular" sx={{height: `${(Math.random()*200)+100}px`, borderRadius: '16px'}} />
+  const ratio = useMemo(()=>{
+    return hit.imageHeight / hit.imageWidth
+  }, [hit])
+  
+  return <>
+    { 
+      loaded ? <Card>
+        <img src={hit.webformatURL} className='cardImage' alt={hit.id}/>
+        <div className='cardBody'>
+          <div>
+            <Typography variant="subtitle1" gutterBottom>
+              {`By ${hit.user}`}
+            </Typography>
+            <Typography variant="caption" gutterBottom>
+              {hit.tags}
+            </Typography>
+          </div>
+          <Avatar src={hit.userImageURL}/>
+        </div>
+      </Card> : <div ref={skeletonWrapperRef} >
         <Stack>
-          <Skeleton variant="text" sx={{ fontSize: '16px' }} />
-          <Skeleton variant="text" sx={{ fontSize: '12px' }} />
-        </Stack>
-    </Stack>
-    })}
-   </Masonry>
-}
+            <Skeleton variant="rectangular" animation="wave" sx={{height: '0px', paddingTop: `${(ratio * 100)}%`,  borderRadius: '16px'}} />
+            <div>
 
+            </div>
+            <Stack>
+              <Skeleton variant="text" animation="wave" sx={{ fontSize: '28px', marginTop: '4px' }} />
+              <Skeleton variant="text" animation="wave" sx={{ fontSize: '22px', marginTop: '4px' }} />
+            </Stack>
+            <img ref={ref} onLoad={onLoad} src={hit.webformatURL} className='cardImageGhost' alt={hit.id}/>
+        </Stack>
+      </div>
+    }
+  </>
+
+}
 //Component to render the images
 const ImageList = ({hits}) => {
 
-  //Lets fetch the preview if the image is very large
-  const [largeImageSize, ] = useState(1000000)
   const smallScreen = useMediaQuery('(max-width:800px)');
   const tinyScreen = useMediaQuery('(max-width:500px)');
 
   return <Masonry columns={tinyScreen ? 1 : smallScreen ? 2 : 4}> 
-    { hits.map((hit)=>{
-        return <Card key={hit.id}>
-          <img src={hit.imageWidth * hit.imageHeight > largeImageSize ? hit.previewURL : hit.webformatURL } className='cardImage' alt={hit.id}/>
-          <div className='cardBody'>
-            <div>
-              <Typography variant="subtitle1" gutterBottom>
-                {`By ${hit.user}`}
-              </Typography>
-              <Typography variant="caption" gutterBottom>
-                {hit.tags}
-              </Typography>
-            </div>
-            <Avatar src={hit.userImageURL}/>
-          </div>
-        </Card>
+    { 
+      hits.map((hit)=>{
+        return <ImageCard hit={hit} key={hit.id}/>
       })
     } 
   </Masonry>
@@ -112,9 +122,7 @@ export default function App() {
         console.log("Something went wrong: ", e.message)
       }).finally(()=>{
         //Show the loading state
-        setTimeout(()=>{
-          setLoadingImages(false)
-        }, 1000)
+        setLoadingImages(false)
       })
     })
 
@@ -185,10 +193,10 @@ export default function App() {
         }}>
           { (searchTermResults && currentPageResults)  ? 
             <Typography variant="subtitle1" gutterBottom>
-              {`Showing ${currentPageResults.length} of ${searchTermResults.totalHits} results for "${searchTerm}"`} 
+              {`Showing ${pageSize * (currentPage-1)}...${pageSize * (currentPage-1) + currentPageResults.length} of ${searchTermResults.totalHits} results for "${searchTerm}"`} 
             </Typography>  : <div/>}
             
-            {searchTermResults && <Pagination count={searchTermResults.totalHits} page={currentPage} onChange={(e, page)=>{
+            {searchTermResults && <Pagination count={(Math.floor(searchTermResults.totalHits / pageSize) + 1)} page={currentPage} onChange={(e, page)=>{
               fetchResults(searchTerm, page, pageSize)
             }}/>}
         </Container>    
@@ -199,10 +207,10 @@ export default function App() {
             backgroundColor: '#f4f4f4',
             overflow: 'hidden'
         }}>
-            { loadingImages ? <LoadingState/> : Boolean(currentPageResults) ? <ImageList hits={currentPageResults}/> : <div className='emptyResults'>
-                <Typography variant="h4" gutterBottom>
+            { currentPageResults ? <ImageList hits={currentPageResults}/> : <div className='emptyResults'>
+                {loadingImages ? <CircularProgress/> : <Typography variant="h4" gutterBottom>
                   Search for the images in the Pixabay database!
-                </Typography>
+                </Typography>}
               </div>
             }
         </Container>

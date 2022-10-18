@@ -59,7 +59,13 @@
   width: 100%
 }
 
+.cardImageGhost {
+  height: 0;
+  display: none;
+}
+
 .emptyResults {
   width: 100%;
+  height: 100vh;
   text-align: center
 }

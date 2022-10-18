@@ -1,0 +1,24 @@
+import { useState, useEffect, useRef } from 'react';
+
+
+const useImageLoaded = () => {
+  const [loaded, setLoaded] = useState(false)
+  const ref = useRef()
+
+  const onLoad = () => {
+    setLoaded(true)
+  }
+
+  useEffect(() => {
+    if (ref.current){
+      console.log('ref.current.complete: ', ref.current.complete)
+    }
+    if (ref.current && ref.current.complete) {
+      onLoad()
+    }
+  })
+
+  return [ref, loaded, onLoad]
+}
+
+export default useImageLoaded
