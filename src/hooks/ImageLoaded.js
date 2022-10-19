@@ -10,9 +10,6 @@ const useImageLoaded = () => {
   }
 
   useEffect(() => {
-    if (ref.current){
-      console.log('ref.current.complete: ', ref.current.complete)
-    }
     if (ref.current && ref.current.complete) {
       onLoad()
     }
