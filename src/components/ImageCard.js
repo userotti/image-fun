@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import useImageLoaded from '../hooks/ImageLoaded'
 
 //Single card elemnt
-const ImageCard = ({hit}) => {
+const ImageCard = ({hit, onClick}) => {
   const [ref, loaded, onLoad] = useImageLoaded()
   
   const ratio = useMemo(()=>{
@@ -17,7 +17,9 @@ const ImageCard = ({hit}) => {
   
   return <div>
     { 
-      loaded ? <Card className='fadeInContainer'>
+      loaded ? <Card sx={{cursor: 'pointer'}} onClick={()=>{
+        onClick(hit)
+      }} className='fadeInContainer'>
         <img src={hit.webformatURL} className='cardImage' alt={hit.id}/>
         <div className='cardBody'>
           <div>

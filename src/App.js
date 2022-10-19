@@ -18,6 +18,7 @@ import '@fontsource/roboto/300.css';
 import '@fontsource/roboto/400.css';
 import CircularProgress from '@mui/material/CircularProgress';
 import ImageList from './components/ImageList'
+import SimpleDialog from './components/SimpleDialog'
 
 const THEME = createTheme({
   typography: {
@@ -37,15 +38,16 @@ export default function App() {
   const [results, setResults] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
   const [loadingImages, setLoadingImages] = useState(false)
+  const [selectedHit, setSelectedHit] = useState(null)
+  const [pixabayApiKey, setPixabayApiKey] = useState('30547207-fa77989eab6e92806d2cdcb24')
 
   const smallScreen = useMediaQuery('(max-width:800px)');
   const tinyScreen = useMediaQuery('(max-width:500px)');
 
   //The main callback for fetching new images
-  const fetchResults = useCallback((searchTerm, currentPage, pageSize)=>{
+  const fetchResults = useCallback((searchTerm, currentPage, pageSize, apiKey)=>{
 
-    let API_KEY = '30547207-fa77989eab6e92806d2cdcb24';
-    let URL = `https://pixabay.com/api/?key=${API_KEY}&q=${encodeURIComponent(searchTerm)}&page=${currentPage}&per_page=${pageSize}`;
+    let URL = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(searchTerm)}&page=${currentPage}&per_page=${pageSize}`;
     
     setCurrentPage(currentPage)
     setSearchTerm(searchTerm)
@@ -86,6 +88,7 @@ export default function App() {
     <ThemeProvider theme={THEME}>
       <React.Fragment>
         <CssBaseline />
+      
 
         {/*Small from at the top of the screen*/} 
         <Container maxWidth="lg" sx={{
@@ -95,7 +98,7 @@ export default function App() {
           <form 
             onSubmit={(event)=>{
               event.preventDefault();
-              fetchResults(searchText, 1, pageSize)
+              fetchResults(searchText, 1, pageSize, pixabayApiKey)
             }}
             className='formContainer'
           >
@@ -131,9 +134,7 @@ export default function App() {
             flexDirection: (tinyScreen || smallScreen) ? 'column' : 'row',
             alignItems: 'center',
             justifyContent: (tinyScreen || smallScreen) ? 'center' : 'space-between',
-            height: '50px',
-            paddingTop: (tinyScreen || smallScreen) ? '32px' : '16px',
-            paddingBottom: (tinyScreen || smallScreen) ? '32px' : '16px',
+            height: (tinyScreen || smallScreen) ? '80px' : '60px',
             backgroundColor: '#f4f4f4'
         }}>
           { (searchTermResults && currentPageResults)  ? 
@@ -145,7 +146,7 @@ export default function App() {
             count={(Math.floor(searchTermResults.totalHits / pageSize) + 1)} 
             page={currentPage} 
             onChange={(e, page)=>{
-              fetchResults(searchTerm, page, pageSize)
+              fetchResults(searchTerm, page, pageSize, pixabayApiKey)
             }}/>
           }
         </Container>    
@@ -154,16 +155,30 @@ export default function App() {
         <Container maxWidth="lg" sx={{ 
             p: 2,
             backgroundColor: '#f4f4f4',
+            overflowY: 'auto', 
+            overflowX: 'hidden',
+            height: 'calc(100vh - 88px - 60px)',
         }}>
-          { currentPageResults ? <ImageList hits={currentPageResults}/> : <div className='emptyResults'>
+          { currentPageResults ? <ImageList hits={currentPageResults} onHitClick={(hit)=>{
+            setSelectedHit(hit)
+          }}/> : <div className='emptyResults'>
               {loadingImages ? <CircularProgress/> : <><Typography variant="h4" gutterBottom>
                 Welcome! 
-              </Typography><Typography variant="h6" gutterBottom>
-                Search for images in the Pixabay database! 
-              </Typography></>}
+              </Typography><Typography variant="h5" gutterBottom>
+                Search for images in the Pixabay database 
+              </Typography>
+              </>}
             </div>
           }
         </Container>
+        <SimpleDialog
+          onClose={()=>{
+            setSelectedHit(null)
+          }}
+          open={Boolean(selectedHit)}
+          user={selectedHit?.user}
+          src={selectedHit?.webformatURL}
+        />
       </React.Fragment>  
     </ThemeProvider>
     
